@@ -136,6 +136,9 @@ function createGateway(options = {}) {
       return;
     }
 
+    // Log only the method and path so stalled client requests can be diagnosed without recording credentials or content.
+    console.log(JSON.stringify({ event: 'request_received', requestId, method: req.method, path: requestUrl.pathname }));
+
     if (requestUrl.pathname === '/healthz' && (req.method === 'GET' || req.method === 'HEAD')) {
       sendJson(res, 200, { status: 'ok', version: VERSION }, { 'x-request-id': requestId });
       return;
