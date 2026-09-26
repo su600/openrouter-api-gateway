@@ -1,5 +1,7 @@
 # OpenRouter API Gateway
 
+[简体中文说明](README.zh-CN.md)
+
 A small, self-hosted API gateway for using one server-side OpenRouter key from API-compatible clients such as **Claude Code** and **OpenAI Codex**. It is designed for deployment on a private VPS, with HTTPS supplied by Caddy.
 
 > This gateway relays requests; it does not provide model access, credits, or spend limits. OpenRouter account access, model availability, and billing still apply.
