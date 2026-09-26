@@ -4,6 +4,8 @@
 >
 > 构建信息：使用 **Pi Coding Agent**，模型为 OpenRouter 的 **`openai/gpt-6-luna`**。这是开发本项目时使用的模型，不是网关运行时指定的模型。
 >
+> **使用前提：**你需要有一台部署在海外、且中国大陆网络能够直连的云服务器；服务器还必须能通过 HTTPS 被电脑访问、能出站访问 OpenRouter，并配置有效的 OpenRouter API Key 和可用模型。满足这些条件时，电脑可直连自己的网关而不必在本机挂 VPN：请求路径是“中国电脑 → 海外服务器 → OpenRouter”，并非中国电脑直接连接 OpenRouter。实际连通性受运营商路由、DNS、云防火墙及服务商政策影响，不能保证所有网络环境都可用。请遵守适用法律、云服务商条款及 OpenRouter 使用政策。
+>
 > [English README](README.md)
 
 ## 工作方式
