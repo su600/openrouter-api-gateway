@@ -100,13 +100,87 @@ curl --fail https://YOUR_DOMAIN/v1/models \
   -H 'Authorization: Bearer YOUR_CLIENT_API_KEY'
 ```
 
-## Configure clients
+## Windows 上通过 CC Switch 使用（Claude Code / Codex）
 
-Use the **client key**, never the OpenRouter key, in CC Switch, Claude Code, and Codex. Use model IDs exactly as listed by OpenRouter. The selected upstream model must support the relevant API protocol; Codex requires a model/API combination that OpenRouter supports through the Responses API.
+下列配置适用于已经部署并能从 Windows 访问的网关。CC Switch 不同版本的按钮名称可能略有差异，但协议和 URL 必须按本节填写。
 
-### Claude Code directly
+### 1. 先准备域名和客户端 Key
 
-In PowerShell for the current session:
+1. 确认服务器 `.env` 中配置了 `OPENROUTER_API_KEY` 和至少一个 `CLIENT_API_KEYS`。客户端只使用 `CLIENT_API_KEYS`，**不要把 OpenRouter Key 填入 CC Switch**。
+2. 建议 Claude Code 和 Codex 分别使用不同的客户端 Key。服务器上可运行两次 `openssl rand -hex 32` 生成 64 位十六进制 Key，并把它们写入 `.env` 的 `CLIENT_API_KEYS`，例如以逗号分隔：
+
+   ```dotenv
+   CLIENT_API_KEYS=Claude专用随机Key,Codex专用随机Key
+   ```
+
+   这只是格式示意，不能直接照抄示例文字。Key 至少 32 个字符；不要提交 `.env` 或把 Key 发到聊天、截图、日志中。
+3. 确认域名 HTTPS 正常：在 Windows 浏览器打开 `https://YOUR_DOMAIN/healthz`，应返回 `status: ok`。客户端访问的是 HTTPS 域名的 `443` 端口，不是 VPS 的 `5000` 端口。
+4. 从 OpenRouter 模型目录复制所需模型的**完整 Model ID**。Claude Code 使用的模型需支持 Anthropic Messages 接口；Codex 选择的模型需支持 OpenRouter 的 Responses API。
+
+如果刚修改服务器 Key，需在服务器项目目录运行 `docker compose up -d --force-recreate gateway`，让新 Key 生效。
+
+### 2. 添加 Claude Code 供应商
+
+1. 打开 CC Switch，进入 **Claude Code** 区域/标签页。
+2. 选择“添加供应商 / Add Provider”，类型选择 **自定义 Anthropic 兼容供应商**（或同义选项）。
+3. 按下表填写：
+
+   | CC Switch 字段 | 填写内容 |
+   | --- | --- |
+   | 名称 / Name | `OpenRouter 日本网关 - Claude`（可自定义） |
+   | API Base URL / API 地址 | `https://YOUR_DOMAIN` |
+   | API Key / 密钥 | `.env` 中为 Claude Code 准备的客户端 Key |
+   | Model / 模型 | OpenRouter 上的完整 Claude 模型 ID |
+
+4. 保存并**启用/切换到**刚添加的供应商，再新开一个终端启动 `claude`。
+5. 确认请求路径是 `POST https://YOUR_DOMAIN/v1/messages`。Anthropic 客户端可能用 `x-api-key`，也可能用 Bearer 认证；网关两种都接受。通常 Base URL 填域名根地址，不要加 `/v1`，也不要加 `/api`。
+
+如 CC Switch 展示 Opus、Sonnet、Haiku 等多个模型映射栏，给每个启用的栏填写 OpenRouter 上有效的完整模型 ID；若只使用一个模型，就填写主模型栏即可。
+
+### 3. 添加 Codex 供应商
+
+1. 在 CC Switch 中进入 **Codex** 区域/标签页。
+2. 添加自定义供应商。若能选择协议，选择 **OpenAI-compatible / Responses API**；不要选仅支持 Chat Completions 的配置。
+3. 填写：
+
+   | CC Switch 字段 | 填写内容 |
+   | --- | --- |
+   | 名称 / Name | `OpenRouter 日本网关 - Codex`（可自定义） |
+   | Base URL / API 地址 | `https://YOUR_DOMAIN/v1` |
+   | API Key / 密钥 | `.env` 中为 Codex 准备的客户端 Key |
+   | Wire API / API 协议 | `Responses` / `responses` |
+   | Model / 模型 | OpenRouter 上支持 Responses API 的完整模型 ID |
+
+4. 保存并**启用/切换到**该供应商，关闭旧 Codex 进程后重新打开终端启动 `codex`。
+5. 确认 Codex 请求路径为 `POST https://YOUR_DOMAIN/v1/responses`。如果 CC Switch 的高级配置可编辑 `wire_api`，其值必须为 `responses`。Base URL 不要加 `/api`。
+
+### 4. Windows 连通性和认证测试
+
+PowerShell 中使用 `curl.exe`（不是 PowerShell 的 `curl` 别名）。健康检查不需要 Key：
+
+```powershell
+curl.exe -i https://YOUR_DOMAIN/healthz
+```
+
+模型列表接口需要客户端 Key。可在本机临时测试；把占位文本替换成客户端 Key，**不要把命令或输出截图公开**：
+
+```powershell
+curl.exe -i https://YOUR_DOMAIN/v1/models `
+  -H "Authorization: Bearer YOUR_CLIENT_API_KEY"
+```
+
+预期结果：无 Key 时 `/v1/models` 返回 `401`；有效 Key 时请求被转发到 OpenRouter。Anthropic 风格 Key 头也可测试：
+
+```powershell
+curl.exe -i https://YOUR_DOMAIN/v1/models `
+  -H "x-api-key: YOUR_CLIENT_API_KEY"
+```
+
+模型列表正常后，在 CC Switch 启用供应商并分别启动 Claude Code 或 Codex 发起一个简单请求。`/healthz` 成功只证明 HTTPS 网关在线，不代表 Key、模型或 OpenRouter 额度一定有效。
+
+### 5. 直接配置 CLI（不经过 CC Switch 时）
+
+Claude Code 当前 PowerShell 会话：
 
 ```powershell
 $env:ANTHROPIC_BASE_URL = "https://YOUR_DOMAIN"
@@ -115,11 +189,7 @@ $env:ANTHROPIC_MODEL = "YOUR_OPENROUTER_MODEL_ID"
 claude
 ```
 
-`ANTHROPIC_AUTH_TOKEN` is sent as Bearer auth. The gateway also accepts Anthropic SDK `x-api-key` authentication. In CC Switch, add an Anthropic-compatible custom provider with the same base URL, client key, and OpenRouter model ID. Set the base URL to the origin (no trailing `/v1`) when the client appends `/v1` itself; verify the generated request path is `/v1/messages`.
-
-### Codex directly
-
-Add a custom provider to `%USERPROFILE%\.codex\config.toml` (or `~/.codex/config.toml`):
+Codex 可在 `%USERPROFILE%\.codex\config.toml` 中添加自定义 Responses 供应商：
 
 ```toml
 model_provider = "openrouter-gateway"
@@ -132,17 +202,30 @@ env_key = "OPENAI_API_KEY"
 wire_api = "responses"
 ```
 
-Set the client key in the Windows environment, then start a new terminal:
+然后在 PowerShell 设置客户端 Key 并新开终端：
 
 ```powershell
 setx OPENAI_API_KEY "YOUR_CLIENT_API_KEY"
 ```
 
-In CC Switch, create/select a custom Codex provider using the same `/v1` base URL, the client key, and the Responses API wire format. Field names vary by CC Switch version; verify it targets `/v1/responses`, not `/v1/chat/completions`.
+### 6. 常见问题
 
-### Verify the actual path
+- **401 Unauthorized**：Key 不匹配、填了 OpenRouter Key，或服务器修改 `.env` 后没有重建 gateway 容器。检查 Key 前后是否有空格。
+- **404 Not Found**：检查最终路径。Claude Code 应请求 `/v1/messages`；Codex 应请求 `/v1/responses`。不要在 Base URL 中额外加 `/api`；Claude Code 通常也不应重复加 `/v1`。
+- **429 Too Many Requests**：超过 `RATE_LIMIT_PER_MINUTE`；默认是每个有效客户端 Key 每分钟 120 次。
+- **模型不支持 / model not found**：使用 OpenRouter 显示的完整模型 ID，并确认该模型可用于相应协议；Codex 必须走 Responses API。
+- **502/504 或 TLS 错误**：检查域名 DNS、Caddy 证书、服务器到 OpenRouter 的出站网络；服务器端可查看 `docker compose logs --tail=100 gateway caddy`。日志不包含请求正文或 API Key。
+- **外网连不上 5000**：这是预期行为。网关 5000 仅绑定 VPS 的 `127.0.0.1`；客户端必须用 HTTPS 域名访问。
 
-If a client reports a 404, inspect the URL path it generated (without logging or sharing authorization headers). The gateway accepts the paths in the support table and maps `/v1/...` to OpenRouter `/api/v1/...`. Do not add `/api` to the client base URL.
+### 7. 更换或撤销客户端 Key
+
+每个客户端使用独立 Key。若某个 Key 泄漏，从服务器 `.env` 的 `CLIENT_API_KEYS` 中移除该 Key，再运行：
+
+```bash
+docker compose up -d --force-recreate gateway
+```
+
+随后在对应 CC Switch 配置中更新或删除旧 Key。切勿为方便而把 OpenRouter Key 配到 Windows 客户端。
 
 ## Configuration reference
 
