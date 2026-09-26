@@ -1,5 +1,5 @@
 {$DOMAIN} {
-  reverse_proxy gateway:8080 {
+  reverse_proxy gateway:5000 {
     # Keep SSE chunks flowing to Claude Code and Codex without proxy buffering.
     flush_interval -1
   }

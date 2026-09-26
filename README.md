@@ -24,10 +24,11 @@ Only these API paths are permitted. The service cannot be used as an arbitrary H
 - `OPENROUTER_API_KEY` is read only by the gateway container on the server.
 - Clients authenticate with one or more separate random `CLIENT_API_KEYS`. Claude-style `x-api-key` and OpenAI-style `Authorization: Bearer` are both accepted.
 - Client keys are compared using fixed-length SHA-256 digests and constant-time comparison. A key must be at least 32 characters.
-- The gateway has no public container port; only Caddy publishes ports 80/443. Do not open port 8080 in the cloud firewall.
+- The app listens on container port 5000. Compose binds it to host `127.0.0.1:5000` only; it is not reachable from the Internet. Caddy is the only public API entry point on 80/443. Never bind 5000 to `0.0.0.0` or open it in the cloud firewall.
 - Containers run as non-root with a read-only root filesystem and dropped Linux capabilities.
 - No prompt content or credentials are written to application logs. Protect `.env` and keep it out of Git.
-- The default limit is 120 requests/minute per client key and 20 MiB per request. These are configurable; the rate limit is in-memory and resets on restart.
+- Invalid or missing client credentials are rejected with 401 before any upstream request is made. API paths and methods are allowlisted; `/healthz` is public but reveals only liveness/version.
+- The default limit is 120 authenticated requests/minute per client key and 20 MiB per request. These are configurable; the rate limit is in-memory and resets on restart. This is not a billing/spend cap.
 
 Requests and code are transmitted through the VPS and OpenRouter. Use this only if your data-handling requirements permit it. This project does not bypass OpenRouter account restrictions or guarantee that every model feature is compatible with Claude Code or Codex.
 
@@ -43,7 +44,7 @@ For a private GitHub repository, deploy with a read-only GitHub deploy key or co
 
 ### 2. Allow only required inbound ports
 
-In the Tencent Cloud security group and Ubuntu firewall, allow SSH from trusted addresses where possible, plus TCP 80/443 for certificate issuance and HTTPS. UDP 443 is optional (HTTP/3). Do **not** expose TCP 8080.
+In the Tencent Cloud security group and Ubuntu firewall, allow SSH from trusted addresses where possible, plus TCP 80/443 for certificate issuance and HTTPS. UDP 443 is optional (HTTP/3). Do **not** expose TCP 5000. Compose binds that port to loopback only.
 
 Example with UFW (ensure SSH is allowed before enabling UFW):
 
@@ -82,9 +83,13 @@ docker compose logs --tail=100 gateway caddy
 
 Caddy obtains and renews the TLS certificate automatically. Confirm DNS has propagated and ports 80/443 are reachable if certificate issuance fails.
 
-Health check (does not require a client key):
+Health checks (neither requires a client key):
 
 ```bash
+# Local-only app port on the Ubuntu host
+curl --fail http://127.0.0.1:5000/healthz
+
+# Public HTTPS through Caddy
 curl --fail https://YOUR_DOMAIN/healthz
 ```
 
@@ -151,6 +156,7 @@ If a client reports a 404, inspect the URL path it generated (without logging or
 | `RATE_LIMIT_PER_MINUTE` | `120` | Per-client fixed-window request limit; `0` disables it |
 | `MAX_BODY_BYTES` | `20971520` | Maximum request body size (20 MiB) |
 | `UPSTREAM_TIMEOUT_MS` | `600000` | Upstream idle socket timeout (10 minutes) |
+| `PORT` | `5000` | Container listen port. If changed, update Compose port/health settings and the Caddy upstream together; never publish it publicly. |
 
 After changing `.env`, recreate the gateway so the new values take effect:
 

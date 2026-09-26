@@ -299,7 +299,7 @@ if (require.main === module) {
     openRouterReferer: process.env.OPENROUTER_HTTP_REFERER,
     openRouterAppTitle: process.env.OPENROUTER_APP_TITLE || 'OpenRouter Client Gateway',
   });
-  const port = parsePositiveInteger(process.env.PORT, 8080);
+  const port = parsePositiveInteger(process.env.PORT, 5000);
   server.listen(port, '0.0.0.0', () => {
     console.log(JSON.stringify({ event: 'gateway_started', port, upstream: DEFAULT_UPSTREAM, version: VERSION }));
   });
