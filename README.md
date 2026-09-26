@@ -6,7 +6,7 @@ A small, self-hosted API gateway for using one server-side OpenRouter key from A
 
 > Built with **Pi Coding Agent** using the OpenRouter model **`openai/gpt-6-luna`**. This is the development model, not the model served by the gateway.
 >
-> **Mainland China usage prerequisite: you must have an overseas VPS reachable from your mainland network.** With that in place, a mainland-China client can use OpenRouter's top-tier models without running a local VPN by connecting over HTTPS to its own VPS, which then calls OpenRouter. The path is mainland PC → overseas VPS → OpenRouter, not a direct mainland-PC connection to OpenRouter. Access to a particular model still depends on the OpenRouter account, available credits, DNS, ISP routing, and provider policies; not every network or model is guaranteed to work. Follow applicable laws and the terms of your cloud provider and OpenRouter.
+> **Mainland China usage prerequisite: you must have an overseas VPS reachable from your mainland network.** With that in place, a mainland-China client can use OpenRouter's top-tier models without running a local VPN by connecting to its own VPS, which then calls OpenRouter. HTTPS is strongly recommended, but direct HTTP is also supported if you accept that the client-to-VPS traffic is unencrypted. The path is mainland PC → overseas VPS → OpenRouter, not a direct mainland-PC connection to OpenRouter. Access to a particular model still depends on the OpenRouter account, available credits, DNS, ISP routing, and provider policies; not every network or model is guaranteed to work. Follow applicable laws and the terms of your cloud provider and OpenRouter.
 
 > This gateway relays requests; it does not provide model access, credits, or spend limits. OpenRouter account access, model availability, and billing still apply.
 
@@ -31,7 +31,7 @@ Only these API paths are permitted. The service cannot be used as an arbitrary H
 - `OPENROUTER_API_KEY` is read only by the gateway container on the server.
 - Clients authenticate with one or more separate random `CLIENT_API_KEYS`. Claude-style `x-api-key` and OpenAI-style `Authorization: Bearer` are both accepted.
 - Client keys are compared using fixed-length SHA-256 digests and constant-time comparison. A key must be at least 32 characters.
-- The app listens on container port 5000. By default Compose binds it to host `127.0.0.1:5000`; Caddy is the public API entry point on 80/443. Binding port 5000 to `0.0.0.0` is available only as an explicit temporary HTTP testing option and exposes client keys/prompts in plaintext; do not use it in production.
+- The app listens on container port 5000. By default Compose binds it to host `127.0.0.1:5000`; Caddy provides the recommended HTTPS entry point on 80/443. Direct HTTP on port 5000 is also supported by explicitly binding `0.0.0.0`, but it sends client keys and prompts in plaintext. Use HTTPS whenever practical; if choosing HTTP, restrict inbound access to trusted client IPs.
 - Containers run as non-root with a read-only root filesystem and dropped Linux capabilities.
 - No prompt content or credentials are written to application logs. Protect `.env` and keep it out of Git.
 - Invalid or missing client credentials are rejected with 401 before any upstream request is made. API paths and methods are allowlisted; `/healthz` is public but reveals only liveness/version.
@@ -47,11 +47,11 @@ Requests and code are transmitted through the VPS and OpenRouter. Use this only 
 - A DNS name whose `A` record points to the server. Add an `AAAA` record only if IPv6 is configured correctly.
 - OpenRouter API key.
 
-For a private GitHub repository, deploy with a read-only GitHub deploy key or copy the checkout to the server. Do not put a GitHub token in this repository or Compose file.
+If deploying from a private fork, use a read-only GitHub deploy key or copy the checkout to the server. Do not put a GitHub token in this repository or Compose file.
 
 ### 2. Allow only required inbound ports
 
-In the Tencent Cloud security group and Ubuntu firewall, allow SSH from trusted addresses where possible, plus TCP 80/443 for certificate issuance and HTTPS. UDP 443 is optional (HTTP/3). Keep TCP 5000 closed to the Internet in production. For a temporary plain-HTTP test only, see the warning below.
+For the recommended HTTPS setup, allow SSH from trusted addresses where possible and TCP 80/443 for certificate issuance and HTTPS; UDP 443 is optional (HTTP/3). If you choose direct HTTP instead, allow TCP 5000 and restrict its source to trusted client IPs where possible. See the HTTP security warning below.
 
 Example with UFW (ensure SSH is allowed before enabling UFW):
 
@@ -75,7 +75,7 @@ ${EDITOR:-nano} .env
 
 There are **two different keys** in `.env`:
 
-- `OPENROUTER_API_KEY`: your actual OpenRouter secret key. It is stored only in the server-side `.env` and passed to the gateway container at runtime by Compose (`env_file: .env`). It must never be entered in CC Switch, Codex, or Claude Code. The Dockerfile does not copy `.env`, and the key is not baked into the image or repository. On the currently deployed host, the file is `/root/openrouter-api-gateway/.env`.
+- `OPENROUTER_API_KEY`: your actual OpenRouter secret key. It is stored only in the server-side `.env` and passed to the gateway container at runtime by Compose (`env_file: .env`). It must never be entered in CC Switch, Codex, or Claude Code. The Dockerfile does not copy `.env`, and the key is not baked into the image or repository. The file is in the project root on the server.
 - `CLIENT_API_KEYS`: a separate random key (or comma/newline-separated list of keys) used by clients to authenticate to this gateway. CC Switch receives this key, never the OpenRouter key.
 
 After `.env` has `OPENROUTER_API_KEY` configured, generate a client key with the helper:
@@ -102,15 +102,15 @@ docker compose ps
 docker compose logs --tail=100 gateway caddy
 ```
 
-#### Temporary HTTP test mode (not for production)
+#### Optional direct HTTP mode (HTTPS is recommended)
 
-If HTTPS certificate issuance is not ready and you explicitly need a short test, set `GATEWAY_BIND_ADDRESS=0.0.0.0` in `.env`, allow **TCP 5000** from your test client in the cloud security group (prefer the PC's current public IP as a `/32` source instead of `0.0.0.0/0`), and recreate only the gateway:
+If you choose not to use HTTPS, set `GATEWAY_BIND_ADDRESS=0.0.0.0` in `.env`, allow **TCP 5000** from your client in the cloud security group (prefer the PC's current public IP as a `/32` source instead of `0.0.0.0/0`), and recreate only the gateway:
 
 ```bash
 docker compose up -d --force-recreate gateway
 ```
 
-The temporary client URL is `http://YOUR_DOMAIN:5000` (Claude Code base URL without `/v1`; Codex base URL with `/v1`). **HTTP does not encrypt either the client key or prompts**; use a disposable client key and test data only. After testing, change the bind address back to `127.0.0.1`, close the TCP 5000 cloud rule, recreate the gateway, and switch clients to `https://YOUR_DOMAIN` through Caddy.
+The client URL is `http://YOUR_DOMAIN:5000` (Claude Code base URL without `/v1`; Codex base URL with `/v1`); an IP address can also be used. **HTTP does not encrypt the client key or prompts between the client and VPS.** HTTPS remains strongly recommended. If you later switch back to HTTPS, change the bind address to `127.0.0.1`, close the public TCP 5000 rule, recreate the gateway, and use `https://YOUR_DOMAIN` through Caddy.
 
 Caddy obtains and renews the TLS certificate automatically. Confirm DNS has propagated and ports 80/443 are reachable if certificate issuance fails.
 
@@ -256,7 +256,7 @@ setx OPENAI_API_KEY "YOUR_CLIENT_API_KEY"
 - **模型不支持 / model not found**：使用 OpenRouter 显示的完整模型 ID（含命名空间，如 `openai/gpt-6-sol`），并确认该模型可用于相应协议；Codex 必须走 Responses API。
 - **Codex 提示连接失败，但网关健康检查成功**：检查用户级 `config.toml` 是否由顶层 `model_provider` 选择了自定义供应商，且 `base_url`、`wire_api`、Key 都嵌套在对应的 `[model_providers.<id>]` 表中；不要把它们误放在 TOML 顶层。
 - **502/504 或 TLS 错误**：检查域名 DNS、Caddy 证书、服务器到 OpenRouter 的出站网络；服务器端可查看 `docker compose logs --tail=100 gateway caddy`。日志不包含请求正文或 API Key。
-- **外网连不上 5000**：这是预期行为。网关 5000 仅绑定 VPS 的 `127.0.0.1`；客户端必须用 HTTPS 域名访问。
+- **外网连不上 5000**：默认 loopback 绑定时这是预期行为，客户端应通过 HTTPS 域名访问。若选择直接 HTTP，需显式设置 `GATEWAY_BIND_ADDRESS=0.0.0.0`，并在安全组允许可信来源访问 TCP 5000。
 
 ### 7. 更换或撤销客户端 Key
 
@@ -273,7 +273,7 @@ docker compose up -d --force-recreate gateway
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `DOMAIN` | required by Compose | Public TLS hostname used by Caddy |
-| `GATEWAY_BIND_ADDRESS` | `127.0.0.1` | Host bind address for port 5000; use `0.0.0.0` only for temporary plaintext testing |
+| `GATEWAY_BIND_ADDRESS` | `127.0.0.1` | Host bind address for port 5000; `0.0.0.0` enables direct HTTP access (unencrypted); HTTPS is recommended |
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai` | Pinned official upstream origin; no path or alternate host |
 | `OPENROUTER_API_KEY` | required | Server-only upstream credential |
 | `CLIENT_API_KEYS` | required | Comma/newline-separated client keys, each at least 32 characters |

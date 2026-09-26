@@ -4,7 +4,7 @@
 >
 > 构建信息：使用 **Pi Coding Agent**，模型为 OpenRouter 的 **`openai/gpt-6-luna`**。这是开发本项目时使用的模型，不是网关运行时指定的模型。
 >
-> **核心前提：必须先有一台中国大陆网络能够直连的海外云服务器。**满足此前提后，中国 IP 的电脑可以不在本机挂 VPN，通过 HTTPS 连接自己的海外服务器，再由服务器访问 OpenRouter，从而调用 OpenRouter 账号和额度允许使用的顶级模型。链路是“中国电脑 → 海外服务器 → OpenRouter”，不是中国电脑直接连接 OpenRouter。能否使用具体模型仍取决于账号权限、额度、DNS、运营商路由和服务商政策；不保证所有地区网络或所有模型都可用。请遵守适用法律、云服务商条款及 OpenRouter 使用政策。
+> **核心前提：必须先有一台中国大陆网络能够直连的海外云服务器。**满足此前提后，中国 IP 的电脑可以不在本机挂 VPN，通过自己的海外服务器访问 OpenRouter，从而调用账号和额度允许使用的顶级模型。链路是“中国电脑 → 海外服务器 → OpenRouter”，不是中国电脑直接连接 OpenRouter。HTTPS 强烈推荐，但不是必需；也可选择直接 HTTP，不过客户端到服务器的连接不加密。能否使用具体模型仍取决于账号权限、额度、DNS、运营商路由和服务商政策；不保证所有地区网络或所有模型都可用。请遵守适用法律、云服务商条款及 OpenRouter 使用政策。
 >
 > [English README](README.md)
 
@@ -12,7 +12,7 @@
 
 ```text
 Claude Code / Codex / CC Switch
-            │ HTTPS（生产）或临时 HTTP（仅测试）
+            │ HTTPS（推荐）或 HTTP（不加密）
             ▼
        本项目 API 网关
             │ Authorization: Bearer <服务器端 OpenRouter Key>
@@ -39,7 +39,7 @@ Claude Code / Codex / CC Switch
 ### 1. OpenRouter API Key（上游 Key）
 
 - 存放在服务器项目目录的 `.env` 文件中的 `OPENROUTER_API_KEY`。
-- 当前这台部署机上的文件路径是：`/root/openrouter-api-gateway/.env`。
+- 文件位于服务器上的项目根目录：`.env`。
 - Docker Compose 通过 `env_file: .env` 在**容器运行时**注入它；Dockerfile 不包含它，镜像中也不会烘焙它。
 - **只留在服务器上。绝不能填入 CC Switch、Codex 或 Claude Code。**
 
@@ -63,10 +63,10 @@ chmod 600 .env
 ### 1. 准备工作
 
 - Ubuntu 服务器，已安装 Docker Engine 和 Docker Compose v2。
-- 一个指向服务器公网 IPv4 的域名；生产环境通过 Caddy 自动配置 HTTPS。
+- 若使用推荐的 HTTPS 方式，需要一个指向服务器公网 IPv4 的域名；Caddy 自动配置证书。若选择 HTTP，可直接使用服务器 IP 或域名。
 - 一个 OpenRouter API Key。
 
-腾讯云安全组和服务器防火墙生产环境只需允许受限 SSH，以及 TCP `80/443`（证书签发、HTTPS）；UDP `443` 可选。**不要把 TCP `5000` 对公网开放。**
+推荐的 HTTPS 方式需在安全组允许受限 SSH 及 TCP `80/443`；UDP `443` 可选。若选择直接 HTTP，还需开放 TCP `5000`，并尽量将来源限制为可信客户端 IP。
 
 ### 2. 配置 `.env` 与 Key
 
@@ -198,28 +198,28 @@ setx OPENAI_API_KEY "YOUR_CLIENT_API_KEY"
 
 使用 CC Switch 管理供应商时，优先让 CC Switch 写配置；上面的 TOML 用于核对结构，避免手工设置被 CC Switch 覆盖。
 
-## 临时 HTTP 测试（不要用于生产）
+## 可选的直接 HTTP 方式（推荐使用 HTTPS）
 
-如果 HTTPS 证书还没准备好，只为短暂验证流程，可在服务器 `.env` 中设置：
+如果选择不配置 HTTPS，可在服务器 `.env` 中设置：
 
 ```dotenv
 GATEWAY_BIND_ADDRESS=0.0.0.0
 ```
 
-腾讯云安全组临时允许 TCP `5000`。尽量将来源限制为测试电脑的公网 IP `/32`，不要对所有 IP 开放。重建网关：
+在腾讯云安全组允许入站 TCP `5000`。尽量将来源限制为客户端当前公网 IP `/32`，不要对所有 IP 开放。重建网关：
 
 ```bash
 docker compose up -d --force-recreate gateway
 ```
 
-临时 URL：
+客户端 URL：
 
 - Claude Code：`http://YOUR_DOMAIN:5000`（不加 `/v1`）
 - Codex：`http://YOUR_DOMAIN:5000/v1`
 
-也可暂时使用服务器 IP，例如 `http://YOUR_SERVER_IP:5000/v1`。如果 `t.su600.cn` 等域名有 DNS/DNSSEC 问题，IP 可用于区分域名解析问题。
+也可暂时使用服务器 IP，例如 `http://YOUR_SERVER_IP:5000/v1`。如果你的域名有 DNS/DNSSEC 问题，IP 可用于区分域名解析问题。
 
-> **HTTP 明文传输客户端 Key 和对话内容，只限无敏感内容的短时测试。**完成后将 `GATEWAY_BIND_ADDRESS` 改回 `127.0.0.1`，关闭安全组 TCP 5000，重建网关，并切回 HTTPS 域名。若客户端 Key 在截图或聊天中暴露，请从 `CLIENT_API_KEYS` 撤销旧值并生成新值。
+> **HTTP 不会加密客户端 Key 和对话内容。HTTPS 强烈推荐，但并非技术上的硬性要求。**若选择继续使用 HTTP，请使用可信网络并限制安全组来源；如果改回 HTTPS，将 `GATEWAY_BIND_ADDRESS` 设为 `127.0.0.1`，关闭公网 TCP 5000，重建网关，并通过 Caddy 使用 `https://YOUR_DOMAIN`。若客户端 Key 在截图或聊天中暴露，请从 `CLIENT_API_KEYS` 撤销旧值并生成新值。
 
 ## 排障
 
