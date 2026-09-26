@@ -1,0 +1,15 @@
+{
+  "name": "openrouter-api-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A streaming API gateway for Claude Code (Anthropic Messages) and Codex (OpenAI Responses) via OpenRouter.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT"
+}
