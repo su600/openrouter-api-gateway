@@ -6,7 +6,7 @@ A small, self-hosted API gateway for using one server-side OpenRouter key from A
 
 > Built with **Pi Coding Agent** using the OpenRouter model **`openai/gpt-6-luna`**. This is the development model, not the model served by the gateway.
 >
-> **Prerequisites for mainland China use:** You need an overseas VPS reachable from your mainland network, HTTPS access to that VPS, outbound access from the VPS to OpenRouter, a valid OpenRouter API key, and access to the selected model. When those conditions hold, the client connects to its own gateway rather than directly to OpenRouter, so a local VPN is not inherently required. Actual connectivity depends on ISP routing, DNS, cloud firewall rules, and provider policies; it is not guaranteed on every network. Follow applicable laws and the terms of your cloud provider and OpenRouter.
+> **Mainland China usage prerequisite: you must have an overseas VPS reachable from your mainland network.** With that in place, a mainland-China client can use OpenRouter's top-tier models without running a local VPN by connecting over HTTPS to its own VPS, which then calls OpenRouter. The path is mainland PC → overseas VPS → OpenRouter, not a direct mainland-PC connection to OpenRouter. Access to a particular model still depends on the OpenRouter account, available credits, DNS, ISP routing, and provider policies; not every network or model is guaranteed to work. Follow applicable laws and the terms of your cloud provider and OpenRouter.
 
 > This gateway relays requests; it does not provide model access, credits, or spend limits. OpenRouter account access, model availability, and billing still apply.
 
