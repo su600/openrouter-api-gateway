@@ -4,6 +4,8 @@
 
 A small, self-hosted API gateway for using one server-side OpenRouter key from API-compatible clients such as **Claude Code** and **OpenAI Codex**. It is designed for deployment on a private VPS, with HTTPS supplied by Caddy.
 
+> Built with **Pi Coding Agent** using the OpenRouter model **`openai/gpt-6-luna`**. This is the development model, not the model served by the gateway.
+
 > This gateway relays requests; it does not provide model access, credits, or spend limits. OpenRouter account access, model availability, and billing still apply.
 
 ## What it supports

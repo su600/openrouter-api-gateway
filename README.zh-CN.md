@@ -2,6 +2,8 @@
 
 > **一句话说明：**在自己的服务器上运行这个网关，让 Claude Code 通过 Anthropic Messages API、Codex 通过 OpenAI Responses API 接入 OpenRouter；OpenRouter Key 留在服务器，客户端只使用单独生成的访问 Key。
 >
+> 构建信息：使用 **Pi Coding Agent**，模型为 OpenRouter 的 **`openai/gpt-6-luna`**。这是开发本项目时使用的模型，不是网关运行时指定的模型。
+>
 > [English README](README.md)
 
 ## 工作方式
