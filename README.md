@@ -161,10 +161,12 @@ curl --fail https://YOUR_DOMAIN/v1/models \
    | Base URL / API 地址 | `https://YOUR_DOMAIN/v1` |
    | API Key / 密钥 | `.env` 中为 Codex 准备的客户端 Key |
    | Wire API / API 协议 | `Responses` / `responses` |
-   | Model / 模型 | OpenRouter 上支持 Responses API 的完整模型 ID |
+   | Model / 模型 | OpenRouter 上支持 Responses API 的完整模型 ID，例如 `openai/gpt-6-sol`（请以账户当前可用模型为准） |
 
-4. 保存并**启用/切换到**该供应商，关闭旧 Codex 进程后重新打开终端启动 `codex`。
-5. 确认 Codex 请求路径为 `POST https://YOUR_DOMAIN/v1/responses`。如果 CC Switch 的高级配置可编辑 `wire_api`，其值必须为 `responses`。Base URL 不要加 `/api`。
+   若 CC Switch 提示该供应商不支持自动获取模型列表，通常可以在 Model 栏手动填写完整 ID；这不等同于 API 请求不受支持。
+
+4. 保存并**启用/切换到**该供应商。检查用户级 `%USERPROFILE%/.codex/config.toml`：Codex 配置必须有顶层 `model_provider = "openrouter-gateway"`，并且 `base_url`、`wire_api` 和供应商 Key 必须放在 `[model_providers.openrouter-gateway]` 表内，不能作为 TOML 顶层字段。示例见下方“直接配置 CLI”。
+5. 关闭旧 Codex 进程后重新打开。请求路径应为 `POST https://YOUR_DOMAIN/v1/responses`；`wire_api` 必须是 `responses`，Base URL 不要加 `/api`。
 
 ### 4. Windows 连通性和认证测试
 
@@ -204,15 +206,22 @@ claude
 Codex 可在 `%USERPROFILE%\.codex\config.toml` 中添加自定义 Responses 供应商：
 
 ```toml
+# These selector/model fields are top-level:
 model_provider = "openrouter-gateway"
-model = "YOUR_OPENROUTER_MODEL_ID"
+model = "YOUR_OPENROUTER_MODEL_ID" # e.g. openai/gpt-6-sol
+model_reasoning_effort = "high"
 
+# Connection/auth fields belong inside this provider table:
 [model_providers.openrouter-gateway]
 name = "OpenRouter Gateway"
 base_url = "https://YOUR_DOMAIN/v1"
-env_key = "OPENAI_API_KEY"
 wire_api = "responses"
+env_key = "OPENAI_API_KEY"
 ```
+
+如果 CC Switch 将 Key 直接写入 Codex 配置而不是环境变量，可在同一个供应商表内用 `experimental_bearer_token = "YOUR_CLIENT_API_KEY"` 替换 `env_key`。
+
+不要把 `base_url`、`wire_api` 或 `experimental_bearer_token` 放在 TOML 顶层；顶层的 `model_provider` 必须选择名称相同的供应商表。
 
 然后在 PowerShell 设置客户端 Key 并新开终端：
 
@@ -225,7 +234,8 @@ setx OPENAI_API_KEY "YOUR_CLIENT_API_KEY"
 - **401 Unauthorized**：Key 不匹配、填了 OpenRouter Key，或服务器修改 `.env` 后没有重建 gateway 容器。检查 Key 前后是否有空格。
 - **404 Not Found**：检查最终路径。Claude Code 应请求 `/v1/messages`；Codex 应请求 `/v1/responses`。不要在 Base URL 中额外加 `/api`；Claude Code 通常也不应重复加 `/v1`。
 - **429 Too Many Requests**：超过 `RATE_LIMIT_PER_MINUTE`；默认是每个有效客户端 Key 每分钟 120 次。
-- **模型不支持 / model not found**：使用 OpenRouter 显示的完整模型 ID，并确认该模型可用于相应协议；Codex 必须走 Responses API。
+- **模型不支持 / model not found**：使用 OpenRouter 显示的完整模型 ID（含命名空间，如 `openai/gpt-6-sol`），并确认该模型可用于相应协议；Codex 必须走 Responses API。
+- **Codex 提示连接失败，但网关健康检查成功**：检查用户级 `config.toml` 是否由顶层 `model_provider` 选择了自定义供应商，且 `base_url`、`wire_api`、Key 都嵌套在对应的 `[model_providers.<id>]` 表中；不要把它们误放在 TOML 顶层。
 - **502/504 或 TLS 错误**：检查域名 DNS、Caddy 证书、服务器到 OpenRouter 的出站网络；服务器端可查看 `docker compose logs --tail=100 gateway caddy`。日志不包含请求正文或 API Key。
 - **外网连不上 5000**：这是预期行为。网关 5000 仅绑定 VPS 的 `127.0.0.1`；客户端必须用 HTTPS 域名访问。
 
