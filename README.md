@@ -59,21 +59,34 @@ sudo ufw enable
 
 ### 3. Configure secrets
 
+Create the runtime environment file on the server; this file is ignored by Git:
+
 ```bash
 cp .env.example .env
-openssl rand -hex 32  # generate a client key; repeat for additional clients
 chmod 600 .env
+${EDITOR:-nano} .env
 ```
 
-Edit `.env` on the server:
+There are **two different keys** in `.env`:
 
-- `DOMAIN`: your DNS name.
-- `OPENROUTER_BASE_URL`: `https://openrouter.ai` (the production gateway rejects other hosts).
-- `OPENROUTER_API_KEY`: the OpenRouter key (server only).
-- `CLIENT_API_KEYS`: random client key(s), separated by commas or newlines.
-- Keep `OPENROUTER_HTTP_REFERER` set to your domain, or remove its value if not needed.
+- `OPENROUTER_API_KEY`: your actual OpenRouter secret key. It is stored only in the server-side `.env` and passed to the gateway container at runtime by Compose (`env_file: .env`). It must never be entered in CC Switch, Codex, or Claude Code. The Dockerfile does not copy `.env`, and the key is not baked into the image or repository. On the currently deployed host, the file is `/root/openrouter-api-gateway/.env`.
+- `CLIENT_API_KEYS`: a separate random key (or comma/newline-separated list of keys) used by clients to authenticate to this gateway. CC Switch receives this key, never the OpenRouter key.
 
-Do not commit `.env`, send it to clients, or paste its contents into chat. Use a different client key for each device/user so a single key can be revoked by removing it from `CLIENT_API_KEYS` and recreating the container.
+After `.env` has `OPENROUTER_API_KEY` configured, generate a client key with the helper:
+
+```bash
+./scripts/create-client-key.sh
+```
+
+The script generates a 256-bit random key, appends it to `CLIENT_API_KEYS` in `.env`, keeps the file mode at `600`, and prints the newly generated key **once** so you can copy it into CC Switch. To retrieve the current configured key list later, run `grep '^CLIENT_API_KEYS=' .env` on the server; that prints secrets, so do not share the output. Each key must be at least 32 characters.
+
+After adding or rotating keys, recreate the gateway to load the updated environment:
+
+```bash
+docker compose up -d --force-recreate gateway
+```
+
+Use a separate client key per device/user. To revoke one, remove only that value from `CLIENT_API_KEYS`, recreate the gateway, and update the corresponding CC Switch profile. Protect `.env` from other server users; anyone with root or Docker daemon access can inspect container environment variables. Never commit `.env`, put keys in a Dockerfile/build argument, send them to clients except for the client key, or paste them into chat.
 
 ### 4. Start the gateway
 

@@ -3,6 +3,7 @@ FROM node:22-alpine
 ENV NODE_ENV=production PORT=5000
 WORKDIR /app
 
+# Secrets are injected at runtime by Compose; never bake .env or API keys into this image.
 COPY --chown=node:node package.json server.js ./
 USER node
 
