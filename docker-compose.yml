@@ -7,7 +7,7 @@ services:
       - "5000"
     # Local host access only; public clients must use HTTPS through Caddy.
     ports:
-      - "127.0.0.1:5000:5000"
+      - "${GATEWAY_BIND_ADDRESS:-127.0.0.1}:5000:5000"
     networks:
       - gateway-internal
     read_only: true

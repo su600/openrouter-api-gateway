@@ -25,7 +25,7 @@ Only these API paths are permitted. The service cannot be used as an arbitrary H
 - `OPENROUTER_API_KEY` is read only by the gateway container on the server.
 - Clients authenticate with one or more separate random `CLIENT_API_KEYS`. Claude-style `x-api-key` and OpenAI-style `Authorization: Bearer` are both accepted.
 - Client keys are compared using fixed-length SHA-256 digests and constant-time comparison. A key must be at least 32 characters.
-- The app listens on container port 5000. Compose binds it to host `127.0.0.1:5000` only; it is not reachable from the Internet. Caddy is the only public API entry point on 80/443. Never bind 5000 to `0.0.0.0` or open it in the cloud firewall.
+- The app listens on container port 5000. By default Compose binds it to host `127.0.0.1:5000`; Caddy is the public API entry point on 80/443. Binding port 5000 to `0.0.0.0` is available only as an explicit temporary HTTP testing option and exposes client keys/prompts in plaintext; do not use it in production.
 - Containers run as non-root with a read-only root filesystem and dropped Linux capabilities.
 - No prompt content or credentials are written to application logs. Protect `.env` and keep it out of Git.
 - Invalid or missing client credentials are rejected with 401 before any upstream request is made. API paths and methods are allowlisted; `/healthz` is public but reveals only liveness/version.
@@ -45,7 +45,7 @@ For a private GitHub repository, deploy with a read-only GitHub deploy key or co
 
 ### 2. Allow only required inbound ports
 
-In the Tencent Cloud security group and Ubuntu firewall, allow SSH from trusted addresses where possible, plus TCP 80/443 for certificate issuance and HTTPS. UDP 443 is optional (HTTP/3). Do **not** expose TCP 5000. Compose binds that port to loopback only.
+In the Tencent Cloud security group and Ubuntu firewall, allow SSH from trusted addresses where possible, plus TCP 80/443 for certificate issuance and HTTPS. UDP 443 is optional (HTTP/3). Keep TCP 5000 closed to the Internet in production. For a temporary plain-HTTP test only, see the warning below.
 
 Example with UFW (ensure SSH is allowed before enabling UFW):
 
@@ -82,6 +82,16 @@ docker compose up -d --build
 docker compose ps
 docker compose logs --tail=100 gateway caddy
 ```
+
+#### Temporary HTTP test mode (not for production)
+
+If HTTPS certificate issuance is not ready and you explicitly need a short test, set `GATEWAY_BIND_ADDRESS=0.0.0.0` in `.env`, allow **TCP 5000** from your test client in the cloud security group (prefer the PC's current public IP as a `/32` source instead of `0.0.0.0/0`), and recreate only the gateway:
+
+```bash
+docker compose up -d --force-recreate gateway
+```
+
+The temporary client URL is `http://YOUR_DOMAIN:5000` (Claude Code base URL without `/v1`; Codex base URL with `/v1`). **HTTP does not encrypt either the client key or prompts**; use a disposable client key and test data only. After testing, change the bind address back to `127.0.0.1`, close the TCP 5000 cloud rule, recreate the gateway, and switch clients to `https://YOUR_DOMAIN` through Caddy.
 
 Caddy obtains and renews the TLS certificate automatically. Confirm DNS has propagated and ports 80/443 are reachable if certificate issuance fails.
 
@@ -234,6 +244,7 @@ docker compose up -d --force-recreate gateway
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `DOMAIN` | required by Compose | Public TLS hostname used by Caddy |
+| `GATEWAY_BIND_ADDRESS` | `127.0.0.1` | Host bind address for port 5000; use `0.0.0.0` only for temporary plaintext testing |
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai` | Pinned official upstream origin; no path or alternate host |
 | `OPENROUTER_API_KEY` | required | Server-only upstream credential |
 | `CLIENT_API_KEYS` | required | Comma/newline-separated client keys, each at least 32 characters |
