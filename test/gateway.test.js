@@ -151,6 +151,20 @@ test('rejects invalid client keys without contacting OpenRouter', async () => {
   assert.equal(seen.length, requestCount);
 });
 
+test('production upstream is restricted to the HTTPS OpenRouter origin', () => {
+  assert.throws(() => createGateway({
+    upstreamBaseUrl: 'https://attacker.example',
+    upstreamApiKey: UPSTREAM_KEY,
+    clientApiKeys: [CLIENT_KEY],
+  }), /must be https:\/\/openrouter\.ai/);
+  assert.throws(() => createGateway({
+    upstreamBaseUrl: 'http://attacker.example',
+    allowHttpUpstream: true,
+    upstreamApiKey: UPSTREAM_KEY,
+    clientApiKeys: [CLIENT_KEY],
+  }), /only on loopback/);
+});
+
 test('health check is public and unsupported routes are rejected', async () => {
   const health = await fetch(`${baseUrl}/healthz`);
   assert.equal(health.status, 200);

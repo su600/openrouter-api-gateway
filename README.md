@@ -17,10 +17,11 @@ A small, self-hosted API gateway for using one server-side OpenRouter key from A
 
 The gateway forwards the JSON request body and supported protocol headers, replaces client credentials with the server-side OpenRouter credential, and streams the upstream status, response headers, and body back to the client. It never parses or stores prompts. Access logs intentionally omit authorization headers, API keys, query strings, and request/response bodies.
 
-Only these API paths are permitted. The service cannot be used as an arbitrary HTTP proxy.
+Only these API paths are permitted. The service cannot be used as an arbitrary HTTP proxy. The production upstream is pinned to the exact `https://openrouter.ai` origin; arbitrary upstream hosts are rejected.
 
 ## Security model
 
+- `OPENROUTER_BASE_URL` defaults to `https://openrouter.ai`; production rejects alternate hosts so the server-side key cannot be redirected to an arbitrary endpoint.
 - `OPENROUTER_API_KEY` is read only by the gateway container on the server.
 - Clients authenticate with one or more separate random `CLIENT_API_KEYS`. Claude-style `x-api-key` and OpenAI-style `Authorization: Bearer` are both accepted.
 - Client keys are compared using fixed-length SHA-256 digests and constant-time comparison. A key must be at least 32 characters.
@@ -67,6 +68,7 @@ chmod 600 .env
 Edit `.env` on the server:
 
 - `DOMAIN`: your DNS name.
+- `OPENROUTER_BASE_URL`: `https://openrouter.ai` (the production gateway rejects other hosts).
 - `OPENROUTER_API_KEY`: the OpenRouter key (server only).
 - `CLIENT_API_KEYS`: random client key(s), separated by commas or newlines.
 - Keep `OPENROUTER_HTTP_REFERER` set to your domain, or remove its value if not needed.
@@ -232,6 +234,7 @@ docker compose up -d --force-recreate gateway
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `DOMAIN` | required by Compose | Public TLS hostname used by Caddy |
+| `OPENROUTER_BASE_URL` | `https://openrouter.ai` | Pinned official upstream origin; no path or alternate host |
 | `OPENROUTER_API_KEY` | required | Server-only upstream credential |
 | `CLIENT_API_KEYS` | required | Comma/newline-separated client keys, each at least 32 characters |
 | `OPENROUTER_HTTP_REFERER` | optional | OpenRouter attribution header (`HTTP-Referer`) |
@@ -256,4 +259,4 @@ npm test
 node --check server.js
 ```
 
-The tests use a local mock upstream and verify client-key authentication, server-side key replacement, protocol headers, route mapping, and live SSE forwarding. Production traffic always targets `https://openrouter.ai`; plain HTTP upstreams are allowed only through explicit dependency injection in tests.
+The tests use a local mock upstream and verify client-key authentication, server-side key replacement, protocol headers, route mapping, and live SSE forwarding. Production traffic is pinned to `https://openrouter.ai`; plain HTTP upstreams are allowed only on loopback in tests.

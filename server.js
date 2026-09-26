@@ -73,14 +73,15 @@ function sendJson(res, status, body, extraHeaders = {}) {
 function createGateway(options = {}) {
   const upstreamBaseUrl = options.upstreamBaseUrl || DEFAULT_UPSTREAM;
   const upstreamOrigin = new URL(upstreamBaseUrl);
-  if (!['https:', 'http:'].includes(upstreamOrigin.protocol)) {
-    throw new Error('OPENROUTER_BASE_URL must use HTTPS (HTTP is only suitable for localhost tests).');
+  if (upstreamOrigin.pathname !== '/' || upstreamOrigin.search || upstreamOrigin.hash || upstreamOrigin.username || upstreamOrigin.password) {
+    throw new Error('OPENROUTER_BASE_URL must be an origin without credentials, path, query, or fragment.');
   }
-  if (upstreamOrigin.pathname !== '/' || upstreamOrigin.search || upstreamOrigin.hash) {
-    throw new Error('OPENROUTER_BASE_URL must be an origin without a path, query, or fragment.');
-  }
-  if (upstreamOrigin.protocol === 'http:' && !options.allowHttpUpstream) {
-    throw new Error('The upstream must use HTTPS. HTTP is only enabled by the test harness.');
+  if (options.allowHttpUpstream) {
+    if (upstreamOrigin.protocol !== 'http:' || !['127.0.0.1', '::1', 'localhost'].includes(upstreamOrigin.hostname)) {
+      throw new Error('HTTP upstreams are allowed only on loopback for tests.');
+    }
+  } else if (upstreamOrigin.protocol !== 'https:' || upstreamOrigin.hostname !== 'openrouter.ai') {
+    throw new Error('Production OPENROUTER_BASE_URL must be https://openrouter.ai.');
   }
 
   const upstreamApiKey = options.upstreamApiKey;
@@ -290,7 +291,9 @@ if (require.main === module) {
     throw new Error('Each CLIENT_API_KEYS entry must be at least 32 characters. Generate one with: openssl rand -hex 32');
   }
 
+  const upstreamBaseUrl = process.env.OPENROUTER_BASE_URL || DEFAULT_UPSTREAM;
   const server = createGateway({
+    upstreamBaseUrl,
     upstreamApiKey: process.env.OPENROUTER_API_KEY,
     clientApiKeys,
     maxBodyBytes: parsePositiveInteger(process.env.MAX_BODY_BYTES, 20 * 1024 * 1024),
@@ -301,7 +304,7 @@ if (require.main === module) {
   });
   const port = parsePositiveInteger(process.env.PORT, 5000);
   server.listen(port, '0.0.0.0', () => {
-    console.log(JSON.stringify({ event: 'gateway_started', port, upstream: DEFAULT_UPSTREAM, version: VERSION }));
+    console.log(JSON.stringify({ event: 'gateway_started', port, upstream: upstreamBaseUrl, version: VERSION }));
   });
   for (const signal of ['SIGTERM', 'SIGINT']) {
     process.on(signal, () => server.close(() => process.exit(0)));
