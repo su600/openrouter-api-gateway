@@ -76,6 +76,7 @@ before(async () => {
     openRouterReferer: 'https://api.example.com',
     openRouterClaudeReferer: 'https://claude.ai/code',
     openRouterCodexReferer: 'https://openai.com/codex/',
+    openRouterCodexTitle: 'CodeX',
   });
   const gatewayPort = await listen(gateway);
   baseUrl = `http://127.0.0.1:${gatewayPort}`;
@@ -143,7 +144,7 @@ test('Codex Responses API accepts Bearer client auth and preserves SSE', async (
   assert.equal(forwarded.url, '/api/v1/responses');
   assert.equal(forwarded.headers.authorization, `Bearer ${UPSTREAM_KEY}`);
   assert.equal(forwarded.headers['http-referer'], 'https://openai.com/codex/');
-  assert.equal(forwarded.headers['x-openrouter-title'], 'Codex');
+  assert.equal(forwarded.headers['x-openrouter-title'], 'CodeX');
   assert.equal(forwarded.headers['x-openrouter-app-visibility'], 'hidden');
   assert.equal(forwarded.headers['openai-beta'], 'responses=experimental');
   assert.equal(forwarded.body, body);

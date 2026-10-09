@@ -134,7 +134,7 @@ curl --fail https://YOUR_DOMAIN/v1/models \
 
 ### OpenRouter 应用归因（不等于账单/API Key 隔离）
 
-网关按协议路径设置 OpenRouter 应用归因：`/v1/messages` 和 `/v1/messages/count_tokens` 标记为 Claude Code，`/v1/responses` 标记为 Codex，使用 `HTTP-Referer` 与 `X-OpenRouter-Title`。示例 Referer 使用 Claude Code 与 Codex 的官方应用页面地址。网关会附带 `X-OpenRouter-App-Visibility: hidden`，使新建归因条目不公开展示。OpenRouter 文档将这些 Header 用于应用分析/排名。**这不会创建独立的 OpenRouter API Key 或账单账户；OpenRouter Logs 的请求行文档没有列出 app/title 字段或筛选器，因此不能保证 Logs 逐条区分 Claude 与 Codex。**分类依赖请求路径，其他协议路径不会被这两种标签识别。
+网关按协议路径设置 OpenRouter 应用归因：`/v1/messages` 和 `/v1/messages/count_tokens` 标记为 Claude Code，`/v1/responses` 标记为 CodeX，使用 `HTTP-Referer` 与 `X-OpenRouter-Title`。示例 Referer 使用 Claude Code 与 Codex 的官方应用页面地址。网关会附带 `X-OpenRouter-App-Visibility: hidden`，使新建归因条目不公开展示。OpenRouter 文档将这些 Header 用于应用分析/排名。**这不会创建独立的 OpenRouter API Key 或账单账户；OpenRouter Logs 的请求行文档没有列出 app/title 字段或筛选器，因此不能保证 Logs 逐条区分 Claude 与 Codex。**分类依赖请求路径，其他协议路径不会被这两种标签识别。
 
 ## Windows 上通过 CC Switch 配置
 
@@ -254,7 +254,7 @@ docker compose up -d --force-recreate gateway
 | `OPENROUTER_CLAUDE_HTTP_REFERER` | `https://claude.ai/code` | Claude Messages 专用 Referer |
 | `OPENROUTER_CLAUDE_APP_TITLE` | `Claude Code` | Claude Messages 专用应用名称 |
 | `OPENROUTER_CODEX_HTTP_REFERER` | `https://openai.com/codex/` | Codex Responses 专用 Referer |
-| `OPENROUTER_CODEX_APP_TITLE` | `Codex` | Codex Responses 专用应用名称 |
+| `OPENROUTER_CODEX_APP_TITLE` | `CodeX` | Codex Responses 专用应用名称 |
 
 修改 `.env` 后需运行 `docker compose up -d --force-recreate gateway` 使配置生效。
 
