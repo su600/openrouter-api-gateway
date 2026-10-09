@@ -111,8 +111,7 @@ function createGateway(options = {}) {
   const openRouterClaudeReferer = options.openRouterClaudeReferer || (openRouterReferer ? deriveAttributionReferer(openRouterReferer, '/claude-code') : openRouterReferer);
   const openRouterClaudeTitle = options.openRouterClaudeTitle || 'Claude Code';
   // Keep Codex attribution independent from the gateway's generic referer; OpenRouter may group by origin.
-  const openRouterCodexReferer = options.openRouterCodexReferer || 'http://codex.openai.com';
-  const openRouterCodexTitle = options.openRouterCodexTitle || 'CodeX';
+  const openRouterCodexReferer = options.openRouterCodexReferer || 'https://openai.com/codex';
   const requestFunction = upstreamOrigin.protocol === 'https:' ? https.request : http.request;
 
   function authenticate(req) {
@@ -201,7 +200,7 @@ function createGateway(options = {}) {
       attributionTitle = openRouterClaudeTitle;
     } else if (requestUrl.pathname === '/v1/responses') {
       attributionReferer = openRouterCodexReferer;
-      attributionTitle = openRouterCodexTitle;
+      attributionTitle = '';
     }
     const headers = {
       authorization: `Bearer ${upstreamApiKey}`,
@@ -336,7 +335,6 @@ if (require.main === module) {
     openRouterClaudeReferer: process.env.OPENROUTER_CLAUDE_HTTP_REFERER,
     openRouterClaudeTitle: process.env.OPENROUTER_CLAUDE_APP_TITLE || 'Claude Code',
     openRouterCodexReferer: process.env.OPENROUTER_CODEX_HTTP_REFERER,
-    openRouterCodexTitle: process.env.OPENROUTER_CODEX_APP_TITLE || 'CodeX',
   });
   const port = parsePositiveInteger(process.env.PORT, 5000);
   server.listen(port, '0.0.0.0', () => {
