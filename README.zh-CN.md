@@ -134,7 +134,7 @@ curl --fail https://YOUR_DOMAIN/v1/models \
 
 ### OpenRouter 应用归因（不等于账单/API Key 隔离）
 
-网关按协议路径设置 OpenRouter 应用归因：`/v1/messages` 和 `/v1/messages/count_tokens` 标记为 Claude Code，`/v1/responses` 标记为 CodeX，使用 `HTTP-Referer` 与 `X-OpenRouter-Title`。示例 Referer 使用 Claude Code 与 Codex 的官方应用页面地址。网关会附带 `X-OpenRouter-App-Visibility: hidden`，使新建归因条目不公开展示。OpenRouter 文档将这些 Header 用于应用分析/排名。**这不会创建独立的 OpenRouter API Key 或账单账户；OpenRouter Logs 的请求行文档没有列出 app/title 字段或筛选器，因此不能保证 Logs 逐条区分 Claude 与 Codex。**分类依赖请求路径，其他协议路径不会被这两种标签识别。
+网关按协议路径设置 OpenRouter 应用归因：`/v1/messages` 和 `/v1/messages/count_tokens` 标记为 Claude Code，`/v1/responses` 标记为 CodeX，使用 `HTTP-Referer` 与 `X-OpenRouter-Title`。Codex 的 Referer 设为 `http://codex.openai.com`，标题设为 `CodeX`。网关会附带 `X-OpenRouter-App-Visibility: hidden`，使新建归因条目不公开展示。OpenRouter 文档将这些 Header 用于应用分析/排名。**实测结论：**使用 `https://openai.com/codex/` 时，OpenRouter 将地址归一到 `openai.com` 根域名并丢失标题；更换其他域名后标题可正常识别，但 Logo 显示为 WordPress。当前使用 `http://codex.openai.com` 是为了保留 OpenAI 相关主机名并避开根域名归并；其最终标题和 Logo 需通过新请求验证。归因 Header 不会创建独立的 OpenRouter API Key 或账单账户；OpenRouter Logs 文档也未保证请求行包含 app/title 或能逐条区分客户端。分类依赖请求路径，其他协议路径不会被这两种标签识别。
 
 ## Windows 上通过 CC Switch 配置
 
@@ -253,7 +253,7 @@ docker compose up -d --force-recreate gateway
 | `OPENROUTER_APP_TITLE` | `OpenRouter Client Gateway` | 其他端点的默认应用归因名称（`X-OpenRouter-Title`） |
 | `OPENROUTER_CLAUDE_HTTP_REFERER` | `https://claude.ai/code` | Claude Messages 专用 Referer |
 | `OPENROUTER_CLAUDE_APP_TITLE` | `Claude Code` | Claude Messages 专用应用名称 |
-| `OPENROUTER_CODEX_HTTP_REFERER` | `https://openai.com/codex` | Codex Responses 专用 Referer |
+| `OPENROUTER_CODEX_HTTP_REFERER` | `http://codex.openai.com` | Codex Responses 专用 Referer |
 | `OPENROUTER_CODEX_APP_TITLE` | `CodeX` | Codex Responses 专用应用名称 |
 
 修改 `.env` 后需运行 `docker compose up -d --force-recreate gateway` 使配置生效。
