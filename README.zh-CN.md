@@ -253,7 +253,7 @@ docker compose up -d --force-recreate gateway
 | `OPENROUTER_APP_TITLE` | `OpenRouter Client Gateway` | 其他端点的默认应用归因名称（`X-OpenRouter-Title`） |
 | `OPENROUTER_CLAUDE_HTTP_REFERER` | `https://claude.ai/code` | Claude Messages 专用 Referer |
 | `OPENROUTER_CLAUDE_APP_TITLE` | `Claude Code` | Claude Messages 专用应用名称 |
-| `OPENROUTER_CODEX_HTTP_REFERER` | `https://openai.com/codex` | Codex Responses 专用 Referer |
+| `OPENROUTER_CODEX_HTTP_REFERER` | `https://codex.com` | Codex Responses 专用 Referer |
 | `OPENROUTER_CODEX_APP_TITLE` | `CodeX` | Codex Responses 专用应用名称 |
 
 修改 `.env` 后需运行 `docker compose up -d --force-recreate gateway` 使配置生效。

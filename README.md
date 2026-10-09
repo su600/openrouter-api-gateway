@@ -283,7 +283,7 @@ docker compose up -d --force-recreate gateway
 | `OPENROUTER_APP_TITLE` | `OpenRouter Client Gateway` | Default OpenRouter app attribution title for other endpoints (`X-OpenRouter-Title`) |
 | `OPENROUTER_CLAUDE_HTTP_REFERER` | `https://claude.ai/code` | Referer sent for Claude Messages endpoints |
 | `OPENROUTER_CLAUDE_APP_TITLE` | `Claude Code` | App attribution title for Claude Messages endpoints |
-| `OPENROUTER_CODEX_HTTP_REFERER` | `https://openai.com/codex` | Referer sent for Codex Responses endpoint |
+| `OPENROUTER_CODEX_HTTP_REFERER` | `https://codex.com` | Referer sent for Codex Responses endpoint |
 | `OPENROUTER_CODEX_APP_TITLE` | `CodeX` | App attribution title for Codex Responses endpoint |
 | `RATE_LIMIT_PER_MINUTE` | `120` | Per-client fixed-window request limit; `0` disables it |
 | `MAX_BODY_BYTES` | `20971520` | Maximum request body size (20 MiB) |
