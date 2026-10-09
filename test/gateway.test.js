@@ -75,8 +75,6 @@ before(async () => {
     maxBodyBytes: 1024,
     openRouterReferer: 'https://api.example.com',
     openRouterClaudeReferer: 'https://claude.ai/code',
-    openRouterCodexReferer: 'https://openai.com/codex/',
-    openRouterCodexTitle: 'CodeX',
   });
   const gatewayPort = await listen(gateway);
   baseUrl = `http://127.0.0.1:${gatewayPort}`;
