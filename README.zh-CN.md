@@ -132,6 +132,10 @@ curl --fail https://YOUR_DOMAIN/v1/models \
 
 无效或缺少 Key 的 API 请求会返回 `401`。`/healthz` 是公开的，但只返回服务状态和版本。
 
+### OpenRouter 应用归因（不等于账单/API Key 隔离）
+
+网关按协议路径设置 OpenRouter 应用归因：`/v1/messages` 和 `/v1/messages/count_tokens` 标记为 Claude Code，`/v1/responses` 标记为 Codex，使用 `HTTP-Referer` 与 `X-OpenRouter-Title`。建议将两个应用 Referer 配置为自己控制的稳定、不同的 URL。网关会附带 `X-OpenRouter-App-Visibility: hidden`，使新建归因条目不公开展示。OpenRouter 文档将这些 Header 用于应用分析/排名。**这不会创建独立的 OpenRouter API Key 或账单账户；OpenRouter Logs 的请求行文档没有列出 app/title 字段或筛选器，因此不能保证 Logs 逐条区分 Claude 与 Codex。**分类依赖请求路径，其他协议路径不会被这两种标签识别。
+
 ## Windows 上通过 CC Switch 配置
 
 以下均使用**客户端 Key**，不是 OpenRouter Key。CC Switch 各版本的按钮文字可能不同，请以协议、URL 和配置文件结构为准。
@@ -240,6 +244,19 @@ docker compose up -d --force-recreate gateway
 ## Docker 与密钥
 
 仓库已有 `Dockerfile`，基于 Node.js 22 Alpine，以非 root 用户运行，根文件系统只读，并提供健康检查。Docker Compose 负责 HTTPS 和运行时环境变量注入。**不要将 API Key 写入 Dockerfile、镜像构建参数、Git、客户端代码或日志。**
+
+## 配置参考
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `OPENROUTER_HTTP_REFERER` | 可选 | 其他端点的默认 OpenRouter 应用归因 Referer |
+| `OPENROUTER_APP_TITLE` | `OpenRouter Client Gateway` | 其他端点的默认应用归因名称（`X-OpenRouter-Title`） |
+| `OPENROUTER_CLAUDE_HTTP_REFERER` | `.env.example` 中为 `https://claude-code.example.com` | Claude Messages 专用 Referer |
+| `OPENROUTER_CLAUDE_APP_TITLE` | `Claude Code` | Claude Messages 专用应用名称 |
+| `OPENROUTER_CODEX_HTTP_REFERER` | `.env.example` 中为 `https://codex.example.com` | Codex Responses 专用 Referer |
+| `OPENROUTER_CODEX_APP_TITLE` | `Codex` | Codex Responses 专用应用名称 |
+
+修改 `.env` 后需运行 `docker compose up -d --force-recreate gateway` 使配置生效。
 
 ## 开发与测试
 

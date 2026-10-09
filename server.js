@@ -38,6 +38,18 @@ const HOP_BY_HOP_HEADERS = new Set([
   'upgrade',
 ]);
 
+function deriveAttributionReferer(baseReferer, path) {
+  try {
+    const url = new URL(baseReferer);
+    url.pathname = path;
+    url.search = '';
+    url.hash = '';
+    return url.toString();
+  } catch {
+    return `${baseReferer.replace(/\/$/, '')}${path}`;
+  }
+}
+
 function sha256(value) {
   return crypto.createHash('sha256').update(value).digest();
 }
@@ -96,6 +108,10 @@ function createGateway(options = {}) {
   const rateWindows = new Map();
   const openRouterReferer = options.openRouterReferer || '';
   const openRouterAppTitle = options.openRouterAppTitle || 'OpenRouter Client Gateway';
+  const openRouterClaudeReferer = options.openRouterClaudeReferer || (openRouterReferer ? deriveAttributionReferer(openRouterReferer, '/claude-code') : openRouterReferer);
+  const openRouterClaudeTitle = options.openRouterClaudeTitle || 'Claude Code';
+  const openRouterCodexReferer = options.openRouterCodexReferer || (openRouterReferer ? deriveAttributionReferer(openRouterReferer, '/codex') : openRouterReferer);
+  const openRouterCodexTitle = options.openRouterCodexTitle || 'Codex';
   const requestFunction = upstreamOrigin.protocol === 'https:' ? https.request : http.request;
 
   function authenticate(req) {
@@ -177,11 +193,23 @@ function createGateway(options = {}) {
     }
 
     const targetPath = `/api${requestUrl.pathname}${requestUrl.search}`;
+    let attributionReferer = openRouterReferer;
+    let attributionTitle = openRouterAppTitle;
+    if (requestUrl.pathname === '/v1/messages' || requestUrl.pathname === '/v1/messages/count_tokens') {
+      attributionReferer = openRouterClaudeReferer;
+      attributionTitle = openRouterClaudeTitle;
+    } else if (requestUrl.pathname === '/v1/responses') {
+      attributionReferer = openRouterCodexReferer;
+      attributionTitle = openRouterCodexTitle;
+    }
     const headers = {
       authorization: `Bearer ${upstreamApiKey}`,
-      'x-title': openRouterAppTitle,
     };
-    if (openRouterReferer) headers['http-referer'] = openRouterReferer;
+    if (attributionTitle) headers['x-openrouter-title'] = attributionTitle;
+    if (attributionReferer) {
+      headers['http-referer'] = attributionReferer;
+      headers['x-openrouter-app-visibility'] = 'hidden';
+    }
     for (const name of FORWARDED_REQUEST_HEADERS) {
       const value = req.headers[name];
       if (value !== undefined) headers[name] = value;
@@ -304,6 +332,10 @@ if (require.main === module) {
     upstreamTimeoutMs: parsePositiveInteger(process.env.UPSTREAM_TIMEOUT_MS, 10 * 60 * 1000),
     openRouterReferer: process.env.OPENROUTER_HTTP_REFERER,
     openRouterAppTitle: process.env.OPENROUTER_APP_TITLE || 'OpenRouter Client Gateway',
+    openRouterClaudeReferer: process.env.OPENROUTER_CLAUDE_HTTP_REFERER,
+    openRouterClaudeTitle: process.env.OPENROUTER_CLAUDE_APP_TITLE || 'Claude Code',
+    openRouterCodexReferer: process.env.OPENROUTER_CODEX_HTTP_REFERER,
+    openRouterCodexTitle: process.env.OPENROUTER_CODEX_APP_TITLE || 'Codex',
   });
   const port = parsePositiveInteger(process.env.PORT, 5000);
   server.listen(port, '0.0.0.0', () => {

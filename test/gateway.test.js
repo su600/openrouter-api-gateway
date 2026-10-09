@@ -73,6 +73,9 @@ before(async () => {
     clientApiKeys: [CLIENT_KEY],
     rateLimitPerMinute: 0,
     maxBodyBytes: 1024,
+    openRouterReferer: 'https://api.example.com',
+    openRouterClaudeReferer: 'https://claude-code.example.com',
+    openRouterCodexReferer: 'https://codex.example.com',
   });
   const gatewayPort = await listen(gateway);
   baseUrl = `http://127.0.0.1:${gatewayPort}`;
@@ -113,6 +116,9 @@ test('Claude Messages auth and SSE are relayed as a live stream', async () => {
   const forwarded = seen.at(-1);
   assert.equal(forwarded.url, '/api/v1/messages');
   assert.equal(forwarded.headers.authorization, `Bearer ${UPSTREAM_KEY}`);
+  assert.equal(forwarded.headers['http-referer'], 'https://claude-code.example.com');
+  assert.equal(forwarded.headers['x-openrouter-title'], 'Claude Code');
+  assert.equal(forwarded.headers['x-openrouter-app-visibility'], 'hidden');
   assert.equal(forwarded.headers['x-api-key'], undefined);
   assert.equal(forwarded.headers['anthropic-version'], '2023-06-01');
   assert.equal(forwarded.headers['anthropic-beta'], 'messages-2023-12-15');
@@ -136,6 +142,9 @@ test('Codex Responses API accepts Bearer client auth and preserves SSE', async (
   const forwarded = seen.at(-1);
   assert.equal(forwarded.url, '/api/v1/responses');
   assert.equal(forwarded.headers.authorization, `Bearer ${UPSTREAM_KEY}`);
+  assert.equal(forwarded.headers['http-referer'], 'https://codex.example.com');
+  assert.equal(forwarded.headers['x-openrouter-title'], 'Codex');
+  assert.equal(forwarded.headers['x-openrouter-app-visibility'], 'hidden');
   assert.equal(forwarded.headers['openai-beta'], 'responses=experimental');
   assert.equal(forwarded.body, body);
 });
