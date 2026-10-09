@@ -111,7 +111,7 @@ function createGateway(options = {}) {
   const openRouterClaudeReferer = options.openRouterClaudeReferer || (openRouterReferer ? deriveAttributionReferer(openRouterReferer, '/claude-code') : openRouterReferer);
   const openRouterClaudeTitle = options.openRouterClaudeTitle || 'Claude Code';
   // Keep Codex attribution independent from the gateway's generic referer; OpenRouter may group by origin.
-  const openRouterCodexReferer = options.openRouterCodexReferer || 'https://codex.com';
+  const openRouterCodexReferer = options.openRouterCodexReferer || 'https://codex.openai.com';
   const openRouterCodexTitle = options.openRouterCodexTitle || 'CodeX';
   const requestFunction = upstreamOrigin.protocol === 'https:' ? https.request : http.request;
 

@@ -141,7 +141,7 @@ test('Codex Responses API accepts Bearer client auth and preserves SSE', async (
   const forwarded = seen.at(-1);
   assert.equal(forwarded.url, '/api/v1/responses');
   assert.equal(forwarded.headers.authorization, `Bearer ${UPSTREAM_KEY}`);
-  assert.equal(forwarded.headers['http-referer'], 'https://codex.com');
+  assert.equal(forwarded.headers['http-referer'], 'https://codex.openai.com');
   assert.equal(forwarded.headers['x-openrouter-title'], 'CodeX');
   assert.equal(forwarded.headers['x-openrouter-app-visibility'], 'hidden');
   assert.equal(forwarded.headers['openai-beta'], 'responses=experimental');
